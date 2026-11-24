@@ -1,0 +1,50 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+ENV/
+env/
+
+# Large Model weights & checkpoints
+*.gguf
+*.pt
+*.bin
+*.safetensors
+
+# Local SQLite databases & temporary audio
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+*.wav
+input.wav
+output.wav
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
