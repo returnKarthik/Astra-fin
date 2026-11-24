@@ -1,6 +1,6 @@
 # 🌌 ASTRA: Autonomous Financial Intelligence Platform
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)](https://github.com/HariharPenubadi/Astra-Fin-Agent/actions)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)](https://github.com/returnKarthik/Astra-fin/actions)
 [![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg?style=flat-square)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg?style=flat-square&logo=react)](https://react.dev/)
@@ -58,50 +58,47 @@ ASTRA is built as a microservices architecture orchestrated via **Docker Compose
 
 ```mermaid
 flowchart TD
-    subgraph Client ["Client Layer"]
-        UI["React 19 + Tailwind Glass-Box UI\n(Port 3000)"]
-        CL["Chainlit Trace UI\n(Port 8000)"]
-        CLI["CLI & Voice Loop\n(Whisper + Piper TTS)"]
+    subgraph ClientLayer ["Client Layer"]
+        UI["React 19 Glass-Box UI (Port 3000)"]
+        CL["Chainlit Workbench (Port 8000)"]
+        CLI["CLI & Voice Assistant (Whisper + Piper)"]
     end
 
-    subgraph Backend ["Astra Core Backend (FastAPI + LangGraph - Port 8000)"]
-        SSE["FastAPI Event Stream\n(/chat SSE)"]
-        LG["LangGraph Agent State Graph"]
-        
-        subgraph Agents ["Graph Nodes & Agents"]
-            Planner["🧠 Planner / Intent Router"]
-            Profile["📝 Investor Profile Extractor"]
-            Advisor["📊 Fiduciary Portfolio Advisor"]
-            FinAgent["🛠️ Finance Fact Agent"]
-            Reasoner["🔍 Hybrid RAG Reasoner"]
-            Critic["⚖️ Critic & Episode Logger"]
-        end
+    subgraph BackendLayer ["Astra Core Backend (FastAPI + LangGraph - Port 8000)"]
+        SSE["FastAPI Event Stream (/chat SSE)"]
+        LG["LangGraph Engine"]
+        Planner["Planner (Intent Router)"]
+        Profile["Investor Profile Extractor"]
+        Advisor["Fiduciary Portfolio Advisor"]
+        FinAgent["Finance Fact Agent"]
+        Reasoner["Hybrid RAG Reasoner"]
+        Critic["Critic & Episode Logger"]
     end
 
-    subgraph Storage ["Memory & Retrieval Layer"]
-        STM["Short-Term Memory\n(Deque Ring Buffer)"]
-        EPI["Episodic DB\n(SQLite: data/episodic.db)"]
-        SEM["Semantic Memory\n(SQLite: data/memory.db)"]
-        Qdrant["Qdrant Vector DB\n(Port 6333)"]
-        SearxNG["SearxNG Meta-Search\n(Port 8080)"]
-        YFin["Yahoo Finance API\n(yfinance)"]
+    subgraph StorageLayer ["Memory & Storage Layer"]
+        STM["Short-Term Memory (Deque Buffer)"]
+        EPI["Episodic DB (SQLite: episodic.db)"]
+        SEM["Semantic Memory (SQLite: memory.db)"]
+        Qdrant["Qdrant Vector DB (Port 6333)"]
+        SearxNG["SearxNG Meta-Search (Port 8080)"]
+        YFin["Yahoo Finance API (yfinance)"]
     end
 
-    subgraph Inference ["Local Inference"]
-        Ollama["Ollama Host\n(Port 11434)"]
-        Model["Fine-Tuned Llama-3 8B\n('astra-fin:latest')"]
+    subgraph InferenceLayer ["Local Inference Engine"]
+        Ollama["Ollama Server (Port 11434)"]
+        Model["Fine-Tuned Llama-3 8B (astra-fin:latest)"]
     end
 
-    UI -->|POST /chat SSE| SSE
+    UI -->|"POST /chat (SSE)"| SSE
     CL --> LG
     CLI --> LG
     SSE --> LG
 
     LG --> Planner
-    Planner -->|investment_setup / advice| Profile
+    Planner --> Profile
     Profile --> Advisor
-    Planner -->|finance_fact| FinAgent
-    Planner -->|greeting / identity / rag| Reasoner
+    Planner --> FinAgent
+    Planner --> Reasoner
 
     Advisor --> Critic
     FinAgent --> Critic
@@ -117,48 +114,52 @@ flowchart TD
     Reasoner -.-> SearxNG
     Reasoner -.-> EPI
 
-    Agents <--> Ollama
-    Ollama --- Model
+    Planner --> Ollama
+    Advisor --> Ollama
+    FinAgent --> Ollama
+    Reasoner --> Ollama
+    Ollama --> Model
 ```
 
 ### LangGraph Execution Flow
 
 ```mermaid
-stateDiagram-v2
-    [*] --> Planner: User Query + Short-Term History
-    
-    state Planner {
-        direction LR
-        Analyze --> ClassifyIntent
-    }
+flowchart TD
+    Start(["User Input + Short-Term History"]) --> Planner["Planner (Intent Router)"]
 
-    Planner --> FinanceAgent: intent == "finance_fact"
-    Planner --> InvestorProfile: intent in {"investment_setup", "investment_advice"}
-    Planner --> Reasoner: general_query / greeting / identity / memory_question
+    Planner --> Route{"Classify Intent"}
 
-    state FinanceAgent {
-        ExtractTickerYear --> QueryYahooFinance
-        QueryYahooFinance --> WebFallback: Tool unavailable
-    }
+    Route -->|"investment_setup or advice"| Profile["Investor Profile Node"]
+    Route -->|"finance_fact"| FinAgent["Finance Fact Agent"]
+    Route -->|"general_query or greeting"| Reasoner["Reasoner Node"]
 
-    state InvestorProfile {
-        ExtractBudgetCurrency --> ExtractRiskTolerance --> UpdateSemanticDB
-    }
+    subgraph ProfileFlow ["Profile & Advisory Pipeline"]
+        Profile -->|"Extract Budget, Currency, Risk"| UpdateSem["Update Semantic DB (memory.db)"]
+        UpdateSem --> Advisor["Portfolio Advisor"]
+        Advisor -->|"Calculate Allocation & Pick Funds"| AdvDone["Generated Recommendations"]
+    end
 
-    InvestorProfile --> Advisor
-    state Advisor {
-        EvaluateRiskScore --> AssetAllocation --> FundRecommendations
-    }
+    subgraph FactFlow ["Financial Fact Pipeline"]
+        FinAgent -->|"Extract Ticker & Year"| YFCheck{"Query Yahoo Finance"}
+        YFCheck -->|"Data Found"| FactAnswer["Verified Company Financials"]
+        YFCheck -->|"Data Missing"| WebFallback["SearxNG Web Fallback"]
+        WebFallback --> FactAnswer
+    end
 
-    FinanceAgent --> Critic
-    Advisor --> Critic
-    Reasoner --> Critic
+    subgraph ReasonerFlow ["Hybrid RAG Pipeline"]
+        Reasoner -->|"Recall Past Episodes"| EpisodicCheck["Episodic DB History"]
+        Reasoner -->|"Vector Search"| QdrantSearch["Qdrant Vector DB"]
+        Reasoner -->|"Live Web Search"| WebSearch["SearxNG Search"]
+        EpisodicCheck --> RAGAnswer["Synthesized Response"]
+        QdrantSearch --> RAGAnswer
+        WebSearch --> RAGAnswer
+    end
 
-    state Critic {
-        StoreEpisodicLog --> FinalizeState
-    }
+    AdvDone --> Critic["Critic Node"]
+    FactAnswer --> Critic
+    RAGAnswer --> Critic
 
-    Critic --> [*]: Streamed Response
+    Critic -->|"Log Episode (episodic.db)"| End(["Stream Response to Client"])
 ```
 
 ---
@@ -243,7 +244,7 @@ Unlike standard wrappers relying on commercial black-box models, ASTRA is powere
 
 - **Base Architecture:** `Llama-3-8B-Instruct`
 - **Fine-Tuning Framework:** [Unsloth](https://github.com/unslothai/unsloth) (2x faster backpropagation, reduced VRAM)
-- **Adaptation Method:** QLoRA (Rank $r=16$, $\alpha=16$, 4-bit NormalFloat quantization)
+- **Adaptation Method:** QLoRA (Rank r=16, Alpha=16, 4-bit NormalFloat Quantization)
 - **Dataset:** `virattt/financial-qa-10k` (10,000+ curated financial QA instruction pairs)
 - **Inference Packaging:** Converted to **GGUF `Q4_K_M`** for local inference on Apple Silicon (Metal) and consumer x86 GPUs/CPUs.
 - **Hugging Face Model Hub:** [Harihar-p/astra-fin-lora](https://huggingface.co/Harihar-p/astra-fin-lora)
